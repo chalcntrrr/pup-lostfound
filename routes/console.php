@@ -28,3 +28,45 @@ Artisan::command('lf:reset-password {email} {password?}', function (string $emai
     \App\Models\ActivityLog::record('Reset password (command line)', "{$user->name} ({$user->email})", $user);
     $this->info("Password updated for {$user->name} ({$user->roleLabel()}).");
 })->purpose('Set a new password for an account (recovery)');
+
+/*
+ * Copy EVERYTHING that is already in MySQL (items, claims, admin accounts) to the Firebase Realtime Database.
+ * Run it once after setting up Firebase (new changes are copied automatically), or any time Firebase got out of sync:
+ *   php artisan firebase:sync            add / update everything
+ *   php artisan firebase:sync --clear    empty items, claims and users in Firebase first, then copy
+ */
+Artisan::command('firebase:sync {--clear : Empty items, claims and users in Firebase first}', function () {
+    if (! \App\Services\FirebaseSync::enabled()) {
+        $this->error('Firebase sync is off. Check FIREBASE_DATABASE_URL in .env (and that FIREBASE_SYNC is not false), then run: php artisan config:clear');
+        return 1;
+    }
+
+    if ($this->option('clear')) {
+        foreach (['items', 'claims', 'users'] as $node) {
+            \App\Services\FirebaseSync::put($node, null);
+        }
+        $this->line('Cleared items, claims and users in Firebase.');
+    }
+
+    $failed = 0;
+    $groups = [
+        'items' => \App\Models\Item::with('category')->cursor(),
+        'claims' => \App\Models\Claim::with('user')->cursor(),
+        'users' => \App\Models\User::cursor(),
+    ];
+
+    foreach ($groups as $name => $records) {
+        $count = 0;
+        foreach ($records as $record) {
+            \App\Services\FirebaseSync::sync($record) ? $count++ : $failed++;
+        }
+        $this->info(ucfirst($name) . ": {$count} synced");
+    }
+
+    if ($failed) {
+        $this->error("{$failed} record(s) could not be sent. See storage/logs/laravel.log");
+        return 1;
+    }
+
+    $this->info('Done. Open Firebase console > Realtime Database > Data.');
+})->purpose('Copy items, claims and admin accounts to the Firebase Realtime Database');

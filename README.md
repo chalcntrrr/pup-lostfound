@@ -186,3 +186,13 @@ It asks for the new password. This works for any account.
 - **Dashboard:** the **All** view shows only items that are still open (LOST and FOUND). CLAIMED and RESOLVED items leave the board and stay under their own filters.
 - **Activity Log:** Super Admin only. It records Admin / Super Admin actions (log in, release or resolve items, approve or reject a claim, log items, create / promote / demote / delete accounts, reset passwords). Only the latest 1,000 entries are kept.
 - **Super Admins:** at most 2. To promote a third, a Super Admin first uses **DEMOTE TO ADMIN** on the other one (you can't demote yourself).
+
+## Firebase Realtime Database (copy of the data)
+
+MySQL stays the main database. Every time an **item**, a **claim** or an **admin account** is saved or deleted, the system also writes it to the Firebase Realtime Database (`items/{id}`, `claims/{id}`, `users/{id}`), so the data can be seen live in the Firebase console.
+
+- Needs `composer require kreait/laravel-firebase`, `FIREBASE_CREDENTIALS` and `FIREBASE_DATABASE_URL` in `.env`. Add `FIREBASE_HTTP_CLIENT_TIMEOUT=5` so a bad connection never makes the system hang. `FIREBASE_SYNC=false` switches the copy off.
+- **First time (or to repair):** `php artisan firebase:sync` copies everything that is already in MySQL. Add `--clear` to empty the three nodes in Firebase first.
+- **Never copied:** passwords, contact numbers, ID numbers, the finder's details, the claimant's description and photos. Old student/faculty accounts are not copied.
+- If Firebase is unreachable the system keeps working; the problem is only written to `storage/logs/laravel.log`, and `php artisan firebase:sync` can catch up later.
+- Lock the Firebase rules (Realtime Database > Rules: `.read` and `.write` = `false`). The server uses a service account key, so the system is not affected.

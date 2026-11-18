@@ -28,6 +28,11 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // Copy items, claims and admin accounts to the Firebase Realtime Database. Set FIREBASE_SYNC=false to switch off.
+    'firebase_sync' => [
+        'enabled' => env('FIREBASE_SYNC', true),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
