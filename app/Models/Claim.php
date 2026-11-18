@@ -123,6 +123,28 @@ class Claim extends Model
     }
 
     /**
+     * Admin releases a found item straight to the person standing at the office (no account, no earlier
+     * report): the claim is created already APPROVED, the item becomes CLAIMED and a claim slip is issued.
+     * $d = claimant_name, claimant_id_number?, claimant_contact?, proof_details, id_presented
+     */
+    public static function releaseToClaimant(Item $found, User $admin, array $d): self
+    {
+        $claim = self::create([
+            'item_id' => $found->id,
+            'user_id' => null,
+            'claimant_name' => trim($d['claimant_name']),
+            'claimant_id_number' => ($d['claimant_id_number'] ?? null) ?: null,
+            'proof_details' => mb_substr($d['proof_details'], 0, 1000),
+            'contact_number' => ($d['claimant_contact'] ?? null) ?: null,
+            'status' => 'pending',
+        ]);
+
+        $claim->approveAndRelease($admin, $d['id_presented']);
+
+        return $claim->fresh();
+    }
+
+    /**
      * Admin resolves a lost report with a found item: create the claim for the owner and release it.
      * The owner is the report's account holder, or (walk-in report) the person typed in by the admin.
      */

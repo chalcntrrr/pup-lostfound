@@ -252,6 +252,49 @@ class ItemController extends Controller
             : back()->with('success', 'Report marked as RESOLVED.');
     }
 
+    /**
+     * ADMIN: hand a FOUND item to the person at the office. The admin types in who they are, what they
+     * said about the item and the ID they showed; the item becomes CLAIMED and a claim slip is issued.
+     */
+    public function release(Request $request, Item $item)
+    {
+        $admin = $request->user();
+        abort_unless($admin->isAdmin(), 403);
+        abort_unless($item->isFound(), 422, 'Only a found item can be released to a claimant.');
+
+        $data = $request->validate([
+            'claimant_name' => ['required', 'string', 'max:100', 'regex:/^[\pL\s.,\'-]+$/u'],
+            'claimant_id_number' => ['nullable', 'string', 'max:30'],
+            'claimant_contact' => ['nullable', 'regex:/^09\d{2}-?\d{3}-?\d{4}$/'],
+            'proof_details' => ['required', 'string', 'max:1000'],
+            'id_presented' => ['required', 'string', 'max:100'],
+        ], [
+            'claimant_name.required' => "Enter the claimant's name.",
+            'claimant_name.regex' => 'Name can only contain letters, spaces, commas, periods and hyphens.',
+            'claimant_contact.regex' => 'Contact number must follow this format: 09XX-XXX-XXXX',
+            'proof_details.required' => 'Write what the claimant said about the item (description, contents, marks).',
+            'id_presented.required' => 'Enter the ID the claimant presented before releasing the item.',
+        ]);
+
+        $claim = DB::transaction(function () use ($item, $admin, $data) {
+            // Lock the row so two admins can't release the same item twice.
+            $found = Item::whereKey($item->id)->lockForUpdate()->first();
+            if (! $found->isOpen()) {
+                return null;
+            }
+
+            return Claim::releaseToClaimant($found, $admin, $data);
+        });
+
+        if (! $claim) {
+            return back()->with('error', 'This item was already released or resolved.');
+        }
+
+        ActivityLog::record('Released item to claimant', "#{$item->id} {$item->name} to {$claim->claimant_name}");
+
+        return back()->with('success', "\"{$item->name}\" was released to {$claim->claimant_name} and is now CLAIMED.")->with('slip', $claim->id);
+    }
+
     /** Reports made by the logged-in user. */
     public function mine(Request $request)
     {

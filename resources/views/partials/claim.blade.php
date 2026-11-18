@@ -63,14 +63,6 @@
                 <button class="btn-danger btn-sm" type="submit" formaction="{{ route('admin.claims.reject', $claim) }}">REJECT CLAIM</button>
             </form>
         </div>
-    @elseif ($hasActions)
-        <div class="claim-actions">
-            <form method="POST" action="{{ route('claims.destroy', $claim) }}" onsubmit="return confirm('Cancel this claim?')">
-                @csrf
-                @method('DELETE')
-                <button class="btn-danger btn-sm" type="submit">CANCEL CLAIM</button>
-            </form>
-        </div>
     @elseif ($canSeeSlip)
         <div class="claim-actions">
             <a class="btn-primary btn-sm" href="{{ route('claims.slip', $claim) }}">VIEW CLAIM SLIP</a>

@@ -138,18 +138,12 @@
         <div class="button-row">
             <a class="btn-cancel" href="{{ url()->previous() !== url()->current() ? url()->previous() : route('items.index') }}">CANCEL</a>
 
-            @if (($user->isAdmin() && $item->status !== 'resolved') || ($item->user_id === $user->id && $item->isLost() && $item->isOpen()))
-                <button class="btn-primary" type="button" data-open-resolve>RESOLVE</button>
+            @if ($user->isAdmin() && $item->isFound() && $item->isOpen())
+                <button class="btn-primary" type="button" data-open-release>RELEASE TO CLAIMANT</button>
             @endif
 
-            @if ($item->canBeClaimedBy($user))
-                @if ($hasPendingClaim)
-                    <span class="btn-primary btn-disabled">CLAIM PENDING</span>
-                @elseif ($wasRejected)
-                    <span class="btn-primary btn-disabled" title="Please visit the Lost and Found office.">CLAIM REJECTED</span>
-                @else
-                    <a class="btn-primary" href="{{ route('claims.create', $item) }}">CLAIM</a>
-                @endif
+            @if (($user->isAdmin() && $item->status !== 'resolved') || ($item->user_id === $user->id && $item->isLost() && $item->isOpen()))
+                <button class="btn-primary" type="button" data-open-resolve>RESOLVE</button>
             @endif
 
             @if ($item->canBeManagedBy($user))
@@ -234,6 +228,51 @@
         </dialog>
     @endif
 
+    @if ($user->isAdmin() && $item->isFound() && $item->isOpen())
+        {{-- RELEASE TO CLAIMANT: the person is at the office, no account or earlier report needed --}}
+        <dialog class="resolve-dialog" id="release-dialog" @if($errors->hasAny(['claimant_name', 'claimant_id_number', 'claimant_contact', 'proof_details', 'id_presented'])) data-open @endif>
+            <form method="POST" action="{{ route('items.release', $item) }}">
+                @csrf
+                <h2 class="section-heading" style="margin-bottom:6px">Release to claimant</h2>
+                <p class="resolve-helper">{{ $item->name }}. Check the claimant's ID and ask them to describe the item before releasing it.</p>
+
+                <div class="field">
+                    <label class="form-label" for="claimant_name">Claimant's name <span class="required-star">*</span></label>
+                    <input class="form-input @error('claimant_name') is-invalid @enderror" id="claimant_name" name="claimant_name" maxlength="100" value="{{ old('claimant_name') }}" placeholder="Surname, First Name">
+                    @error('claimant_name') <div class="error-label">{{ $message }}</div> @enderror
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label class="form-label" for="claimant_id_number">Student / Employee ID</label>
+                        <input class="form-input @error('claimant_id_number') is-invalid @enderror" id="claimant_id_number" name="claimant_id_number" maxlength="30" value="{{ old('claimant_id_number') }}" placeholder="If any">
+                        @error('claimant_id_number') <div class="error-label">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="field">
+                        <label class="form-label" for="claimant_contact">Contact number</label>
+                        <input class="form-input @error('claimant_contact') is-invalid @enderror" id="claimant_contact" name="claimant_contact" value="{{ old('claimant_contact') }}" placeholder="09XX-XXX-XXXX">
+                        @error('claimant_contact') <div class="error-label">{{ $message }}</div> @enderror
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="form-label" for="proof_details">What the claimant said about the item <span class="required-star">*</span></label>
+                    <textarea class="form-input @error('proof_details') is-invalid @enderror" id="proof_details" name="proof_details" rows="3" maxlength="1000" placeholder="Description, contents, marks, where and when it was lost">{{ old('proof_details') }}</textarea>
+                    @error('proof_details') <div class="error-label">{{ $message }}</div> @enderror
+                </div>
+                <div class="field">
+                    <label class="form-label" for="release_id_presented">ID presented by the claimant <span class="required-star">*</span></label>
+                    <input class="form-input @error('id_presented') is-invalid @enderror" id="release_id_presented" name="id_presented" maxlength="100" value="{{ old('id_presented') }}" placeholder="e.g. PUP School ID, Driver's License">
+                    @error('id_presented') <div class="error-label">{{ $message }}</div> @enderror
+                </div>
+                <p class="resolve-helper">The item will be marked as CLAIMED and a claim slip will be issued.</p>
+
+                <div class="button-row" style="margin-top:20px">
+                    <button class="btn-cancel" type="button" data-close-release>CANCEL</button>
+                    <button class="btn-primary" type="submit">RELEASE</button>
+                </div>
+            </form>
+        </dialog>
+    @endif
+
     @if ($matches->isNotEmpty())
         <section class="section-block" id="matches">
             <h2 class="section-heading">Possible matches</h2>
@@ -255,6 +294,15 @@
 
 @push('scripts')
 <script>
+    (function () {
+        var rel = document.getElementById('release-dialog');
+        if (!rel) return;
+        document.querySelectorAll('[data-open-release]').forEach(function (b) {
+            b.addEventListener('click', function () { rel.showModal(); });
+        });
+        rel.querySelector('[data-close-release]').addEventListener('click', function () { rel.close(); });
+        if (rel.hasAttribute('data-open')) { rel.showModal(); }
+    })();
     (function () {
         var dialog = document.getElementById('resolve-dialog');
         if (!dialog) return;

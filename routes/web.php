@@ -11,14 +11,10 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Who can do what
 |--------------------------------------------------------------------------
-| guest          : welcome page, login, register (students and faculty)
-| any logged in  : dashboard (browse/search), full details, report lost items,
-|                  edit/delete OWN open reports, My Reports, Account, change password
-| student/faculty: claim a found item (Claim Verification), My Claims,
-|                  cancel own pending claim
-| admin          : log surrendered (FOUND) items, log LOST items for walk-in owners
-|                  without an account, approve/reject claims, edit/resolve/
-|                  delete any report, view users
+| guest          : welcome page, admin login (no sign-up: the system is for the office only)
+| admin          : everything: dashboard (browse/search), log FOUND items, log LOST items
+|                  for walk-in owners, RESOLVE, release a found item to the person at the
+|                  office (claim slip), approve/reject claims, view users, My Reports, Account
 | super admin    : everything an admin does + add admin accounts, promote an admin
 |                  to super admin (max 2 super admins; demote one first when full),
 |                  delete accounts, reset passwords, view the activity log
@@ -29,12 +25,14 @@ Route::get('/', fn () => auth()->check() ? redirect()->route('dashboard') : view
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
-    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-    Route::post('/register', [AuthController::class, 'register']);
+
 });
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    // The system is for the Lost and Found office only: everything below needs an Admin / Super Admin account.
+    Route::middleware('role:admin')->group(function () {
     Route::get('/dashboard', [ItemController::class, 'dashboard'])->name('dashboard');
 
     Route::get('/account', [AccountController::class, 'show'])->name('account');
@@ -44,18 +42,12 @@ Route::middleware('auth')->group(function () {
     // Lost & found reports
     Route::get('/my/reports', [ItemController::class, 'mine'])->name('items.mine');
     Route::post('/items/{item}/resolve', [ItemController::class, 'resolve'])->name('items.resolve');
+    Route::post('/items/{item}/release', [ItemController::class, 'release'])->name('items.release'); // found item -> person at the office
     Route::resource('items', ItemController::class);
 
     // Claims
     Route::get('/claims/{claim}/photo', [ClaimController::class, 'proof'])->name('claims.proof');
     Route::get('/claims/{claim}/slip', [ClaimController::class, 'slip'])->name('claims.slip');
-
-    Route::middleware('role:member')->group(function () {
-        Route::get('/items/{item}/claim', [ClaimController::class, 'create'])->name('claims.create');
-        Route::post('/items/{item}/claim', [ClaimController::class, 'store'])->name('claims.store');
-        Route::get('/my/claims', [ClaimController::class, 'mine'])->name('claims.mine');
-        Route::delete('/claims/{claim}', [ClaimController::class, 'destroy'])->name('claims.destroy');
-    });
 
     // Admin only
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
@@ -75,5 +67,6 @@ Route::middleware('auth')->group(function () {
             Route::put('/users/{user}/demote', [AdminController::class, 'demote'])->name('users.demote');
             Route::get('/logs', [AdminController::class, 'logs'])->name('logs'); // activity log: super admin only
         });
+    });
     });
 });

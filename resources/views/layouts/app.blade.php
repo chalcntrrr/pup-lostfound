@@ -47,8 +47,6 @@
                 @if ($user->isSuperAdmin())
                     <a href="{{ route('admin.logs') }}">Activity Log</a>
                 @endif
-            @else
-                <a href="{{ route('claims.mine') }}">My Claims</a>
             @endif
             <hr>
             <form method="POST" action="{{ route('logout') }}">

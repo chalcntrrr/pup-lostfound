@@ -10,7 +10,7 @@ use Illuminate\Database\Seeder;
 class DatabaseSeeder extends Seeder
 {
     /**
-     * Starting data: categories, one admin, one sample student and a few sample posts.
+     * Starting data: categories, a Super Admin, an Admin and a few sample posts (the system is for the office only).
      * Run with:  php artisan migrate:fresh --seed
      */
     public function run(): void
@@ -39,50 +39,24 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        $student = User::firstOrCreate(
-            ['email' => 'student@pup.edu.ph'],
-            [
-                'name' => 'Juan Dela Cruz',
-                'student_number' => '2023-00123-SR-0',
-                'role' => User::ROLE_STUDENT,
-                'contact_number' => '0912-345-6789',
-                'course_section' => 'BSIT 2-1',
-                'password' => 'student123',
-            ]
-        );
-
-        // A faculty member (professor): has an Employee ID instead of a Student ID.
-        $faculty = User::firstOrCreate(
-            ['email' => 'prof@pup.edu.ph'],
-            [
-                'name' => 'Prof. Maria Santos',
-                'employee_number' => 'FAC-2019-0042',
-                'role' => User::ROLE_FACULTY,
-                'contact_number' => '0918-555-0101',
-                'course_section' => 'College of Computer Studies',
-                'password' => 'prof123',
-            ]
-        );
-
         if (Item::count() > 0) {
             return;
         }
 
         $cat = Category::pluck('id', 'name');
 
-        $samples = [
-            [$admin, 'found', 'Electronics', 'Black wireless earbuds', 'Black case with a small scratch on the lid. Found under a bench.', 'Court Bleacher', 2, '15:30'],
-            [$admin, 'found', 'IDs & Documents', 'PUP school ID', 'Student ID with a blue lanyard, surrendered to the guard.', 'Main Lobby', 1, '08:10'],
-            [$student, 'lost', 'Bags & Wallets', 'Brown leather wallet', 'Brown wallet with my ID and some cash. Lost around lunch time.', 'Kubo', 3, '12:00'],
-            [$student, 'lost', 'Electronics', 'White wireless earbuds', 'White earbuds in a charging case with a sticker.', 'Room 302', 4, null],
-            [$admin, 'found', 'Clothing', 'Maroon PUP jacket', 'Size M, left on a chair after the event.', 'Room 201', 5, '17:45'],
+        // FOUND items surrendered to the office (logged by the admin).
+        $found = [
+            ['Electronics', 'Black wireless earbuds', 'Black case with a small scratch on the lid. Found under a bench.', 'Court Bleacher', 2, '15:30'],
+            ['IDs & Documents', 'PUP school ID', 'Student ID with a blue lanyard, surrendered to the guard.', 'Main Lobby', 1, '08:10'],
+            ['Clothing', 'Maroon PUP jacket', 'Size M, left on a chair after the event.', 'Room 201', 5, '17:45'],
         ];
 
-        foreach ($samples as [$owner, $type, $category, $name, $description, $location, $daysAgo, $time]) {
+        foreach ($found as [$category, $name, $description, $location, $daysAgo, $time]) {
             Item::create([
-                'user_id' => $owner->id,
+                'user_id' => $admin->id,
                 'category_id' => $cat[$category],
-                'type' => $type,
+                'type' => 'found',
                 'name' => $name,
                 'description' => $description,
                 'location' => $location,
@@ -91,31 +65,28 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // A professor's lost item, and a LOST item an admin logged for a walk-in owner (no account).
-        Item::create([
-            'user_id' => $faculty->id,
-            'category_id' => $cat['Electronics'],
-            'type' => 'lost',
-            'name' => 'Silver USB flash drive',
-            'description' => 'Silver 64GB flash drive with a red keychain. Contains lecture files.',
-            'location' => 'Room 303',
-            'date_happened' => now()->subDays(2)->toDateString(),
-            'time_happened' => '10:20',
-        ]);
+        // LOST reports logged by the admin for people at the office (walk-in owners, no account).
+        $lost = [
+            ['Bags & Wallets', 'Brown leather wallet', 'Brown wallet with an ID and some cash. Lost around lunch time.', 'Kubo', 3, '12:00', 'Dela Cruz, Juan', '2023-00123-SR-0', '0912-345-6789'],
+            ['Electronics', 'White wireless earbuds', 'White earbuds in a charging case with a sticker.', 'Room 302', 4, null, 'Santos, Maria', 'FAC-2019-0042', '0918-555-0101'],
+            ['Others', 'Blue umbrella', 'Large blue umbrella with a wooden handle.', 'Canteen', 1, '13:00', 'Reyes, Carlo', '2022-01234-SR-0', '0920-111-2233'],
+        ];
 
-        Item::create([
-            'user_id' => $admin->id, // the admin who logged it
-            'category_id' => $cat['Others'],
-            'type' => 'lost',
-            'name' => 'Blue umbrella',
-            'description' => 'Large blue umbrella with a wooden handle.',
-            'location' => 'Canteen',
-            'date_happened' => now()->subDays(1)->toDateString(),
-            'time_happened' => '13:00',
-            'owner_name' => 'Reyes, Carlo',
-            'owner_id_number' => '2022-01234-SR-0',
-            'owner_contact' => '0920-111-2233',
-        ]);
+        foreach ($lost as [$category, $name, $description, $location, $daysAgo, $time, $owner, $ownerId, $ownerContact]) {
+            Item::create([
+                'user_id' => $admin->id, // the admin who logged it
+                'category_id' => $cat[$category],
+                'type' => 'lost',
+                'name' => $name,
+                'description' => $description,
+                'location' => $location,
+                'date_happened' => now()->subDays($daysAgo)->toDateString(),
+                'time_happened' => $time,
+                'owner_name' => $owner,
+                'owner_id_number' => $ownerId,
+                'owner_contact' => $ownerContact,
+            ]);
+        }
 
         // Who surrendered the earbuds (admins only see this); the other found items stay anonymous.
         Item::where('name', 'Black wireless earbuds')->update([

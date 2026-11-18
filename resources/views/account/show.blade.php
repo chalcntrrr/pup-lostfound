@@ -32,7 +32,6 @@
                 <a class="btn-dark-pill" href="{{ route('items.create', ['type' => 'lost']) }}">Log Walk-in Lost Item</a>
             @else
                 <a class="btn-dark-pill" href="{{ route('items.mine') }}">My Reports</a>
-                <a class="btn-dark-pill" href="{{ route('claims.mine') }}">My Claims</a>
             @endif
         </div>
 

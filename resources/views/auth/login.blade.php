@@ -3,27 +3,27 @@
 @section('title', 'Login')
 
 @section('content')
-    {{-- Same layout as the original AdminLogin.fxml, now used by students, faculty and admins --}}
+    {{-- Same layout as the original AdminLogin.fxml, used by the Lost and Found office --}}
     <div class="login-split login">
         <section class="login-maroon">
             <img class="login-logo-md" src="{{ asset('images/logo.png') }}" alt="">
             <h1 class="login-welcome" style="line-height:1.25">PUPSRC LOST<br>AND FOUND</h1>
-            <p class="login-welcome-subtitle" style="margin-top:14px">Log in to report lost items, claim found items, and track your claims.</p>
+            <p class="login-welcome-subtitle" style="margin-top:14px">For Lost and Found office staff (Admin and Super Admin).</p>
         </section>
 
         <section class="login-white">
             <div class="admin-login-card">
                 @include('partials.flash')
 
-                <h2 class="admin-login-title">Login</h2>
-                <p class="admin-login-subtitle">Enter your credentials to continue.</p>
+                <h2 class="admin-login-title">Admin Login</h2>
+                <p class="admin-login-subtitle">Enter your staff credentials to continue.</p>
 
                 <form method="POST" action="{{ route('login') }}" novalidate>
                     @csrf
                     <div class="field">
-                        <label class="form-label" for="login">Email, Student ID or Employee ID</label>
+                        <label class="form-label" for="login">Email</label>
                         <input class="form-input @error('login') is-invalid @enderror" id="login" name="login"
-                               value="{{ old('login') }}" placeholder="Email, YYYY-00000-SR-0 or Employee ID" autocomplete="username" autofocus>
+                               value="{{ old('login') }}" placeholder="Email" autocomplete="username" autofocus>
                     </div>
                     <div class="field">
                         <label class="form-label" for="password">Password</label>
@@ -39,7 +39,7 @@
                     <a class="btn-cancel" href="{{ route('home') }}">BACK</a>
                 </form>
 
-                <p class="forgot-text">Don't have an account? <a href="{{ route('register') }}">Register here</a></p>
+                <p class="forgot-text">Forgot your password? Ask a Super Admin to reset it.</p>
 
             </div>
         </section>
